@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: microtransactions-core
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5433/microtransactions_db
+    username: postgres  # Altere para o seu usuário do Postgres
+    password: sa        # Altere para a sua senha do Postgres
+    driver-class-name: org.postgresql.Driver
+    
+    # Configurações do Pool de Conexões (HikariCP) - Essencial para o setor financeiro
+    hikari:
+      pool-name: HikariPool-Microtransactions
+      maximum-pool-size: 20       # Máximo de conexões simultâneas com o banco
+      minimum-idle: 5             # Mínimo de conexões mantidas vivas em espera
+      idle-timeout: 300000        # Tempo máximo que uma conexão pode ficar ociosa (5 min)
+      connection-timeout: 20000   # Tempo máximo de espera por uma conexão do pool (20 seg)
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update           # 'validate' é o padrão de produção. O Spring apenas checa se o banco bate com o Java.
+    show-sql: true               # Exibe o SQL gerado no console (bom para desenvolvimento)
+    properties:
+      hibernate:
+        format_sql: true         # Formata o SQL exibido para ficar legível
+        jdbc:
+          batch_size: 20         # Otimiza inserções em lote se necessário
+
+server:
+  port: 8080
