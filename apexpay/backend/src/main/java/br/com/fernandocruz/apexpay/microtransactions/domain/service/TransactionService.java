@@ -1,5 +1,6 @@
 package br.com.fernandocruz.apexpay.microtransactions.domain.service;
 
+import br.com.fernandocruz.apexpay.microtransactions.application.dto.TransactionHistoryDTO;
 import br.com.fernandocruz.apexpay.microtransactions.application.dto.TransferRequest;
 import br.com.fernandocruz.apexpay.microtransactions.application.dto.TransferResponse;
 import br.com.fernandocruz.apexpay.microtransactions.domain.model.*;
@@ -15,6 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.time.OffsetDateTime;
 
 @Service
@@ -26,6 +30,29 @@ public class TransactionService {
     private final IdempotencyKeyRepository idempotencyKeyRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+
+    @Transactional(readOnly = true)
+    public Page<TransactionHistoryDTO> getHistoryByUser(String userEmail, Integer days, Pageable pageable) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado."));
+
+        Account account = accountRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Conta não encontrada."));
+
+        // Se não informar os dias, usa 30 por padrão
+        int daysFilter = (days != null && days > 0) ? days : 30;
+        OffsetDateTime startDate = OffsetDateTime.now().minusDays(daysFilter);
+
+        return transactionRepository.findByAccountHistoryAndDate(account.getId(), startDate, pageable)
+                .map(tx -> TransactionHistoryDTO.builder()
+                        .id(tx.getId())
+                        .sourceAccount(tx.getSourceAccount().getAccountNumber())
+                        .destinationAccount(tx.getDestinationAccount().getAccountNumber())
+                        .amount(tx.getAmount())
+                        .status(tx.getStatus())
+                        .timestamp(tx.getCreatedAt())
+                        .build());
+    }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public TransferResponse executeTransfer(String userEmail, TransferRequest request, String idempotencyKeyHeader) {

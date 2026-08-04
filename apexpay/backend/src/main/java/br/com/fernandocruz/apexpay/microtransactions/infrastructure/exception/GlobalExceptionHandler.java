@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
-    
+
     //Trata erros de estado e concorrência (ex: Idempotência duplicada, falha ao aplicar Lock)
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalStateException(IllegalStateException ex) {

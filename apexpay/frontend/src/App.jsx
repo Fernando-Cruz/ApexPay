@@ -1,215 +1,195 @@
 // =========================================================
-// Importa o Hook useState do React.
-// O useState é utilizado para criar variáveis de estado.
-// Sempre que um estado é alterado, o React atualiza automaticamente a interface.
+// Importa o Hook useState e useEffect do React.
 // =========================================================
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-// Importa o componente responsável pela tela de Login.
+// Importa os componentes da aplicação.
 import LoginCard from './components/LoginCard';
-
-// Importa o componente responsável pela tela de transferência bancária.
 import TransferCard from './components/TransferCard';
+import BalanceCard from './components/BalanceCard';
+import TransactionHistory from './components/TransactionHistory';
 
-// =========================================================
+// Importa os serviços de busca de dados da API.
+import { getAccountDetails, getTransactionHistory } from './services/api';
+
 // Importa o ícone de escudo da biblioteca Lucide React.
-// Será utilizado no cabeçalho da aplicação.
-// =========================================================
 import { ShieldCheck } from 'lucide-react';
 
-// =========================================================
-// Componente principal da aplicação.
-// Todo o sistema começa por este componente.
-// =========================================================
 export default function App() {
 
   // =======================================================
-  // Estado que guarda o Token JWT do usuário.
-  // Quando a aplicação inicia, tenta recuperar o Token salvo anteriormente no LocalStorage.
-  // Caso exista, significa que o usuário já estava logado.
+  // Estados de Autenticação e Usuário
   // =======================================================
   const [token, setToken] = useState(
     localStorage.getItem('apexpay_token')
   );
 
-  // =======================================================
-  // Estado que guarda o nome (email) do usuário.
-  // Se existir no LocalStorage, ele é carregado.
-  // Caso contrário, inicia vazio.
-  // =======================================================
   const [username, setUsername] = useState(
     localStorage.getItem('apexpay_user') || ''
   );
 
-  // =======================================================
-  // Estado que guarda o número da conta do usuário.
-  // Também tenta recuperar o valor salvo anteriormente.
-  // =======================================================
   const [accountNumber, setAccountNumber] = useState(
     localStorage.getItem('apexpay_account') || ''
   );
 
   // =======================================================
-  // Função chamada quando o Login é realizado com sucesso.
-  // O componente LoginCard envia:
-  // token
-  // username
-  // accountNumber
-  //
-  // Estes dados atualizam os estados da aplicação.
+  // Estados da Fase 4: Dados Financeiros & Filtros
   // =======================================================
-  const handleLoginSuccess = ({
-    token,
-    username,
-    accountNumber
-  }) => {
-    // Atualiza o Token.
+  const [accountData, setAccountData] = useState(null);
+  const [transactions, setTransactions] = useState([]);
+  const [selectedDays, setSelectedDays] = useState(30); // 🔴 Estado do Filtro de Dias
+  const [loadingData, setLoadingData] = useState(false);
+  const [loadingTx, setLoadingTx] = useState(false); // 🔴 Loading específico do extrato
+
+  // Contador/Gatilho que força recarregar os dados quando a transferência é concluída
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // =======================================================
+  // Função que busca o Saldo da Conta
+  // =======================================================
+  const loadAccountData = async () => {
+    if (!token) return;
+    try {
+      setLoadingData(true);
+      const currentAccount = accountNumber || localStorage.getItem('apexpay_account');
+      const accountRes = await getAccountDetails(currentAccount);
+      setAccountData(accountRes);
+    } catch (err) {
+      console.error("Erro ao carregar dados da conta:", err);
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  // =======================================================
+  // 🔴 Função que busca o Extrato no Backend com Filtro
+  // =======================================================
+  const fetchTransactions = async (days) => {
+    if (!token) return;
+    try {
+      setLoadingTx(true);
+      const data = await getTransactionHistory(days);
+      setTransactions(data);
+    } catch (err) {
+      console.error("Erro ao buscar histórico:", err);
+    } finally {
+      setLoadingTx(false);
+    }
+  };
+
+  // Carrega os dados da conta ao logar ou quando o gatilho de recarga mudar
+  useEffect(() => {
+    if (token) {
+      loadAccountData();
+    }
+  }, [token, refreshTrigger]);
+
+  // 🔴 Carrega o extrato quando o token, o filtro de dias ou o gatilho de recarga mudarem
+  useEffect(() => {
+    if (token) {
+      fetchTransactions(selectedDays);
+    }
+  }, [token, selectedDays, refreshTrigger]);
+
+  // Função disparada quando a transferência dá certo no TransferCard
+  const handleTransferSuccess = () => {
+    // Incrementa o gatilho, forçando os useEffects a recarregarem Saldo e Extrato
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
+  // =======================================================
+  // Manipuladores de Login e Logout
+  // =======================================================
+  const handleLoginSuccess = ({ token, username, accountNumber }) => {
     setToken(token);
-    // Atualiza o usuário.
     setUsername(username);
-    // Atualiza o número da conta.
     setAccountNumber(accountNumber);
   };
 
-  // =======================================================
-  // Função responsável por fazer Logout.
-  //
-  // Remove todos os dados salvos no navegador e limpa os estados da aplicação.
-  // =======================================================
   const handleLogout = () => {
-    // Remove o Token salvo.
     localStorage.removeItem('apexpay_token');
-    // Remove o usuário salvo.
     localStorage.removeItem('apexpay_user');
-    // Remove o número da conta salvo.
     localStorage.removeItem('apexpay_account');
-    // Limpa o estado do Token.
     setToken(null);
-    // Limpa o usuário.
     setUsername('');
-    // Limpa a conta.
     setAccountNumber('');
+    setAccountData(null);
+    setTransactions([]);
   };
 
-  // =======================================================
-  // Renderização da interface.
-  // O React executa este return para montar a tela.
-  // =======================================================
   return (
-    // =====================================================
-    // Container principal da aplicação.
-    // Classes Tailwind:
-    //
-    // min-h-screen -> ocupa toda altura da tela
-    // bg-slate-950 -> fundo escuro
-    // text-slate-100 -> texto claro
-    // flex -> utiliza Flexbox
-    // flex-col -> organiza em coluna
-    // items-center -> centraliza horizontalmente
-    // justify-center -> centraliza verticalmente
-    // p-4 -> padding interno
-    // =====================================================
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 md:p-8">
+      
       {/* ===================================================
           CABEÇALHO DA APLICAÇÃO
          =================================================== */}
-      <div className="w-full max-w-md text-center mb-6">
-
-        {/* Badge azul exibindo o nome do projeto */}
+      <div className="w-full max-w-5xl text-center mb-6">
+        
+        {/* Badge azul */}
         <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-4 py-1.5 rounded-full text-blue-400 text-sm font-semibold mb-3">
-          {/* Ícone de escudo */}
           <ShieldCheck className="w-4 h-4" />
-          {/* Texto ao lado do ícone */}
           <span>Apexpay Microservices</span>
         </div>
 
-        {/* ===================================================
-            Título principal
-            Muda dependendo se o usuário está logado.
-           =================================================== */}
+        {/* Título Principal */}
         <h1 className="text-3xl font-bold tracking-tight text-white">
-
-          {
-            token
-              // Se existir Token...
-              ? 'Transferência Instantânea'
-              // Caso contrário...
-              : 'Acesse sua Conta'
-          }
-
+          {token ? 'Painel Financeiro & Transferências' : 'Acesse sua Conta'}
         </h1>
 
-        {/* ===================================================
-            Subtítulo.
-            Também muda conforme o login.
-           =================================================== */}
+        {/* Subtítulo */}
         <p className="text-slate-400 text-sm mt-1">
-
-          {
-            token
-              // Usuário autenticado
-              ? 'Módulo de Microtransações P2P com Idempotência'
-              // Usuário não autenticado
-              : 'Entre com suas credenciais para continuar'
-          }
+          {token
+            ? 'Módulo de Microtransações P2P com Idempotência e Extrato Reativo'
+            : 'Entre com suas credenciais para continuar'}
         </p>
-
       </div>
 
       {/* ===================================================
-          Alternância entre as telas.
-          ===================================================
+          CONTEÚDO PRINCIPAL (TELA DE LOGIN OU DASHBOARD)
+         =================================================== */}
+      {!token ? (
+        
+        // --- TELA DE LOGIN ---
+        <div className="w-full max-w-md">
+          <LoginCard onLoginSuccess={handleLoginSuccess} />
+        </div>
 
-          Se NÃO existir Token:
+      ) : (
 
-                LoginCard
+        // --- DASHBOARD DA FASE 4 (SALDO + TRANSFERÊNCIA + EXTRATO) ---
+        <div className="w-full max-w-5xl space-y-6">
 
-          Caso exista:
+          {/* 1. Card de Saldo Atualizado */}
+          <BalanceCard
+            balance={accountData?.balance}
+            accountNumber={accountData?.accountNumber || accountNumber}
+            username={username}
+            loading={loadingData}
+            onRefresh={loadAccountData}
+          />
 
-                TransferCard
-
-          Ou seja:
-
-          Token = Login realizado
-          Sem Token = Tela de Login
-      ==================================================== */}
-      {
-
-        !token
-          // ===============================================
-          // Usuário ainda NÃO fez Login.
-          // Exibe o componente LoginCard.
-          // ===============================================
-          ? (
-
-            <LoginCard
-              onLoginSuccess={handleLoginSuccess}
-            />
-
-          )
-
-          // ===============================================
-          // Usuário já está autenticado.
-          // Exibe a tela de transferência.
-          // ===============================================
-          : (
-
+          {/* 2. Grid Lado a Lado: Formulário + Histórico */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
             <TransferCard
-
-              // Nome do usuário.
               username={username}
-
-              // Número da conta.
               accountNumber={accountNumber}
-
-              // Função chamada ao clicar em Logout.
               onLogout={handleLogout}
-
+              onTransferSuccess={handleTransferSuccess}
             />
 
-          )
+            {/* 🔴 Componente de Extrato passando os estados de dias e carregamento */}
+            <TransactionHistory 
+              transactions={transactions} 
+              loading={loadingTx}
+              selectedDays={selectedDays}
+              onDaysChange={(newDays) => setSelectedDays(newDays)}
+            />
 
-      }
+          </div>
+
+        </div>
+      )}
 
     </div>
   );

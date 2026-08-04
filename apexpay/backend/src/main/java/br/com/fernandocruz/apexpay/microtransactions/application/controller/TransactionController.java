@@ -10,10 +10,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import br.com.fernandocruz.apexpay.microtransactions.application.dto.TransactionHistoryDTO;
+
+import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping("/api/v1/transactions")
@@ -23,6 +27,17 @@ import org.springframework.web.bind.annotation.*;
 public class TransactionController {
 
     private final TransactionService transactionService;
+
+    @Operation(summary = "Consultar histórico/extrato de transações")
+    @GetMapping
+    public ResponseEntity<?> getHistory(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(defaultValue = "30") Integer days,
+            @PageableDefault(size = 50) Pageable pageable
+    ) {
+        var history = transactionService.getHistoryByUser(userDetails.getUsername(), days, pageable);
+        return ResponseEntity.ok(history.getContent());
+    }
 
     // Endpoint para realização de transferências instantâneas P2P.
     // Suporta garantia de Idempotência via cabeçalho HTTP "Idempotency-Key".

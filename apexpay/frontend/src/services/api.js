@@ -69,5 +69,26 @@ export const executeTransfer = async (destinationAccount, amount, idempotencyKey
   };
 };
 
+// 2. Busca os detalhes da conta e saldo atual
+export const getAccountDetails = async (accountNumberParam) => {
+  // 1. Tenta usar o parâmetro enviado ou busca no localStorage
+  const account = accountNumberParam || localStorage.getItem('apexpay_account');
+
+  if (!account) {
+    throw new Error("Número da conta não encontrado para consulta do saldo.");
+  }
+
+  // 2. Chama a rota do Spring Boot (reparar que é '/accounts/', pois o baseURL já tem '/api/v1')
+  const response = await api.get(`/accounts/${account}`);
+  
+  // Retorna os dados com o campo 'balance'
+  return response.data;
+};
+
+// 3. Busca o histórico de transações/extrato
+export const getTransactionHistory = async (days = 30) => {
+  const response = await api.get(`/transactions?days=${days}`);
+  return response.data;
+};
 
 export default api;

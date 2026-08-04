@@ -78,6 +78,7 @@ public class AccountController {
                         "id", account.getId(),
                         "accountNumber", account.getAccountNumber(),
                         "userId", account.getUserId(),
+                        "balance",account.getBalance(),
                         "exists", true
                 )))
                 .orElse(ResponseEntity.notFound().build());
