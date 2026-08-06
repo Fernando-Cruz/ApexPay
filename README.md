@@ -1,4 +1,4 @@
-# ApexPay - Sistema Distribuído de Microtransações Financeiras
+# ApexPay - Sistema Distribuído de Microtransações Financeiras (Em andamento)
 
 O **ApexPay** é uma plataforma de microtransações financeiras de alta performance, projetada sob a arquitetura de microsserviços. O objetivo principal do projeto é simular o ecossistema de um banco digital moderno, garantindo consistência transacional (ACID), resiliência, segurança avançada e processamento assíncrono de eventos.
 
